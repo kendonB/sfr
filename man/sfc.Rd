@@ -3,29 +3,34 @@
 \name{sfc}
 \alias{sfc}
 \alias{st_sfc}
-\title{Create simple feature collection object of class sfc from list}
+\title{Create simple feature geometry list column}
 \usage{
-st_sfc(..., crs = NA_integer_, precision = 0)
+st_sfc(..., crs = NA_crs_, precision = 0, check_ring_dir = FALSE)
 }
 \arguments{
-\item{...}{one or more simple feature geometries}
+\item{...}{zero or more simple feature geometries (objects of class \code{sfg}), or a single list of such objects; \code{NULL} values will get replaced by empty geometries.}
 
-\item{crs}{coordinate reference system: integer with the epsg code, or character with proj4string}
+\item{crs}{coordinate reference system: integer with the EPSG code, or character with proj4string}
 
 \item{precision}{numeric; see \link{st_as_binary}}
+
+\item{check_ring_dir}{see \link{st_read}}
+}
+\value{
+an object of class \code{sfc}, which is a classed list-column with simple feature geometries.
 }
 \description{
-Create simple feature list column, set class, and add coordinate reference system
+Create simple feature geometry list column, set class, and add coordinate reference system and precision
 }
 \details{
-a simple feature collection object is a list of class \code{c("stc_TYPE", "sfc")} which contains objects of identical type. This function creates such an object from a list of simple feature objects (of class \code{sfg}), and coerces their type if necessary: collections of XX and MULTIXX are coerced to MULTIXX (with XX: POINT, LINESTRING or POLYGON), other sets are coerced to GEOMETRYCOLLECTION.
-
-in case \code{epsg} is given but \code{proj4string} is not and packages \code{sp} and \code{rgdal} can be loaded, the \code{proj4string} is expanded using the PROJ.4 epsg database.
+A simple feature geometry list-column is a list of class
+\code{c("stc_TYPE", "sfc")} which most often contains objects of identical type;
+in case of a mix of types or an empty set, \code{TYPE} is set to the
+superclass \code{GEOMETRY}.
 }
 \examples{
 pt1 = st_point(c(0,1))
 pt2 = st_point(c(1,1))
 (sfc = st_sfc(pt1, pt2))
-d = data.frame(a = 1:2)
+d = st_sf(data.frame(a=1:2, geom=sfc))
 }
-

@@ -10,9 +10,8 @@ st_geometry_type(x)
 \item{x}{object of class \link{sf} or \link{sfc}}
 }
 \value{
-returns a factor with the geometry type of each simple feature in x
+a factor with the geometry type of each simple feature in x
 }
 \description{
 Return geometry type of an object, as a factor
 }
-

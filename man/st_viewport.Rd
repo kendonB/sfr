@@ -16,22 +16,21 @@ st_viewport(x, ..., bbox = st_bbox(x), asp)
 \item{asp}{numeric; target aspect ratio (y/x), see Details}
 }
 \value{
-the output of the call to \link[grid]{viewport}
+The output of the call to \link[grid]{viewport}
 }
 \description{
 Create viewport from sf, sfc or sfg object
 }
 \details{
-parameters width, height, xscale and yscale are set such that aspect ratio is honoured and plot size is maximized in the current viewport; others can be passed as ...
+parameters \code{width}, \code{height}, \code{xscale} and \code{yscale} are set such that aspect ratio is honoured and plot size is maximized in the current viewport; others can be passed as \code{...}
 
-if \code{asp} is missing, it is taken as 1, except when \code{isTRUE(st_is_longlat(x))}, in which case it is set to \code{1.0 /cos(y)}, with \code{y} the middle of the latitude bounding box.
+If \code{asp} is missing, it is taken as 1, except when \code{isTRUE(st_is_longlat(x))}, in which case it is set to \code{1.0 /cos(y)}, with \code{y} the middle of the latitude bounding box.
 }
 \examples{
 library(grid)
-nc = st_read(system.file("shape/nc.shp", package="sf"), "nc", crs = 4267)
+nc = st_read(system.file("shape/nc.shp", package="sf"))
 grid.newpage()
 pushViewport(viewport(width = 0.8, height = 0.8))
 pushViewport(st_viewport(nc))
 invisible(lapply(st_geometry(nc), function(x) grid.draw(st_as_grob(x, gp = gpar(fill = 'red')))))
 }
-

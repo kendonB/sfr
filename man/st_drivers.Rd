@@ -16,9 +16,12 @@ a \code{data.frame} with driver metadata
 Get a list of the available GDAL drivers
 }
 \details{
-The drivers available will depend on the installation of GDAL/OGR, and can vary; the \code{st_drivers()} function shows which are available, and which may be written (but all are assumed to be readable). Note that stray files in data source directories (such as *.dbf) may lead to suprious errors that accompanying *.shp are missing.
+The drivers available will depend on the installation of GDAL/OGR, and can vary; the \code{st_drivers()}
+function shows which are available, and which may be written (but all are assumed to be readable). Note that stray
+files in data source directories (such as *.dbf) may lead to spurious errors that accompanying *.shp are missing.
+
+field \code{vsi} refers to the driver's capability to read/create datasets through the VSI*L API.
 }
 \examples{
 st_drivers()
 }
-

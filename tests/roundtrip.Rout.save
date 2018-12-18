@@ -1,6 +1,6 @@
 
-R version 3.3.2 (2016-10-31) -- "Sincere Pumpkin Patch"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R version 3.5.0 (2018-04-23) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -18,8 +18,7 @@ Type 'q()' to quit R.
 > #library(rgdal2)
 > #openOGRLayer("PG:dbname=postgis" , "meuse2")
 > 
-> library(sf)
-Linking to GEOS 3.5.0, GDAL 2.1.0
+> suppressPackageStartupMessages(library(sf))
 > outer = matrix(c(0,0,10,0,10,10,0,10,0,0),ncol=2, byrow=TRUE)
 > hole1 = matrix(c(1,1,1,2,2,2,2,1,1,1),ncol=2, byrow=TRUE)
 > hole2 = matrix(c(5,5,5,6,6,6,6,5,5,5),ncol=2, byrow=TRUE)
@@ -39,6 +38,14 @@ attr(,"package")
 > all.equal(a, a2) # round-trip
 [1] TRUE
 > 
+> b1 = as(a, "sf")
+> all.equal(b, b1)
+[1] TRUE
+> b = st_as_sfc(a)
+> b1 = as(a, "sfc")
+> all.equal(b, b1)
+[1] TRUE
+> 
 > # SpatialMultiPoints
 > library(sp)
 > set.seed(1331)
@@ -49,14 +56,20 @@ SpatialMultiPoints:
 2                     MULTIPOINT (10.4 -0.583,10.5 -0.313,9.8 -1.05,10.3 -0.719,11.4 -1.05)
 3 MULTIPOINT (-0.844 9.18,1.14 10.8,1.95 10.8,-0.451 10.7,0.67 10.3,0.127 10.5,-0.727 9.23)
 Coordinate Reference System (CRS) arguments: NA 
-Warning message:
-In data.row.names(row.names, rowsi, i) :
-  some row.names duplicated: 2,3,5,6,7,8,10,11,12,13,14,15 --> row.names NOT used
 > m = st_as_sf(mpdf)
 > all.equal(as(m, "Spatial"), mpdf) # TRUE
 [1] TRUE
 > 
 > demo(meuse, ask = FALSE, echo = FALSE)
+> meuse = spTransform(meuse, CRS("+init=epsg:4326"))
+> pol.grd = as(meuse.grid, "SpatialPolygonsDataFrame")
+> meuse.grd = spTransform(meuse.grid, CRS("+init=epsg:4326"))
+Warning message:
+In spTransform(meuse.grid, CRS("+init=epsg:4326")) :
+  Grid warping not available, coercing to points
+> pol.grd = spTransform(pol.grd, CRS("+init=epsg:4326"))
+> meuse.area = spTransform(meuse.area, CRS("+init=epsg:4326"))
+> meuse.riv = spTransform(meuse.riv, CRS("+init=epsg:4326"))
 > summary(st_as_sf(meuse))
     cadmium           copper            lead            zinc       
  Min.   : 0.200   Min.   : 14.00   Min.   : 37.0   Min.   : 113.0  
@@ -76,13 +89,13 @@ In data.row.names(row.names, rowsi, i) :
                                     NA's   :2                             
     landuse       dist.m                geometry  
  W      :50   Min.   :  10.0   POINT        :155  
- Ah     :39   1st Qu.:  80.0   epsg:28992   :  0  
- Am     :22   Median : 270.0   +init=epsg...:  0  
+ Ah     :39   1st Qu.:  80.0   epsg:4326    :  0  
+ Am     :22   Median : 270.0   +proj=long...:  0  
  Fw     :10   Mean   : 290.3                      
  Ab     : 8   3rd Qu.: 450.0                      
  (Other):25   Max.   :1000.0                      
  NA's   : 1                                       
-> summary(st_as_sf(meuse.grid))
+> summary(st_as_sf(meuse.grd))
      part.a           part.b            dist        soil     ffreq   
  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   1:1665   1: 779  
  1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.1193   2:1084   2:1335  
@@ -92,27 +105,27 @@ In data.row.names(row.names, rowsi, i) :
  Max.   :1.0000   Max.   :1.0000   Max.   :0.9926                    
           geometry   
  POINT        :3103  
- epsg:28992   :   0  
- +init=epsg...:   0  
+ epsg:4326    :   0  
+ +proj=long...:   0  
                      
                      
                      
+> x <- st_as_sf(meuse.grid) # don't print: CRS variations.
 > summary(st_as_sf(meuse.area))
           geometry
  POLYGON      :1  
- epsg:28992   :0  
- +init=epsg...:0  
+ epsg:4326    :0  
+ +proj=long...:0  
 > summary(st_as_sf(meuse.riv))
           geometry
  POLYGON      :1  
- epsg:28992   :0  
- +init=epsg...:0  
+ epsg:4326    :0  
+ +proj=long...:0  
 > summary(st_as_sf(as(meuse.riv, "SpatialLines")))
           geometry
  LINESTRING   :1  
- epsg:28992   :0  
- +init=epsg...:0  
-> pol.grd = as(meuse.grid, "SpatialPolygonsDataFrame")
+ epsg:4326    :0  
+ +proj=long...:0  
 > summary(st_as_sf(pol.grd))
      part.a           part.b            dist        soil     ffreq   
  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   1:1665   1: 779  
@@ -123,8 +136,8 @@ In data.row.names(row.names, rowsi, i) :
  Max.   :1.0000   Max.   :1.0000   Max.   :0.9926                    
           geometry   
  POLYGON      :3103  
- epsg:28992   :   0  
- +init=epsg...:   0  
+ epsg:4326    :   0  
+ +proj=long...:   0  
                      
                      
                      
@@ -138,24 +151,20 @@ In data.row.names(row.names, rowsi, i) :
  Max.   :1.0000   Max.   :1.0000   Max.   :0.9926                    
           geometry   
  LINESTRING   :3103  
- epsg:28992   :   0  
- +init=epsg...:   0  
+ epsg:4326    :   0  
+ +proj=long...:   0  
                      
                      
                      
 > 
 > # roundtrip nc: sf -> sp -> sf
 > # nc = st_read(system.file("gpkg/nc.gpkg", package="sf"), "nc.gpkg")
-> nc = st_read(system.file("shape/nc.shp", package="sf"), "nc")
-Reading layer `nc' from data source `/home/edzer/git/sf.Rcheck/sf/shape/nc.shp' using driver `ESRI Shapefile'
-features:       100
-fields:         14
-converted into: MULTIPOLYGON
-proj4string:    +proj=longlat +datum=NAD27 +no_defs 
+> nc = st_read(system.file("shape/nc.shp", package="sf"), "nc", quiet = TRUE)
 > p4s = "+proj=longlat +datum=NAD27 +no_defs +ellps=clrk66 +nadgrids=@conus,@alaska,@ntv2_0.gsb,@ntv1_can.dat"
 > suppressWarnings(st_crs(nc) <- p4s)
 > names(nc)[15] = "geometry"
 > attr(nc, "sf_column") = "geometry"
+> attr(nc$geometry, "crs")$epsg = NA_integer_
 > all.equal(nc, st_as_sf(as(nc, "Spatial")))
 [1] TRUE
 > 
@@ -163,7 +172,9 @@ proj4string:    +proj=longlat +datum=NAD27 +no_defs
 > comment(sp) = "FALSE"
 > all.equal(nc, st_as_sf(sp))
 [1] TRUE
+> detach("package:sp")
+> unloadNamespace("rgeos")
 > 
 > proc.time()
    user  system elapsed 
-  3.188   0.272   3.167 
+  3.091   0.259   3.026 

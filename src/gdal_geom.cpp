@@ -3,18 +3,7 @@
 
 #include <Rcpp.h>
 
-#include "gdal.h"
-
-// [[Rcpp::export]]
-Rcpp::LogicalVector CPL_is_simple(Rcpp::List sfc) { 
-	std::vector<OGRGeometry *> g = ogr_from_sfc(sfc, NULL);
-	Rcpp::LogicalVector out(sfc.length());
-	for (size_t i = 0; i < g.size(); i++) {
-		out[i] = g[i]->IsSimple();
-		delete g[i];
-	}
-	return(out);
-}
+#include "gdal_sf_pkg.h"
 
 // [[Rcpp::export]]
 Rcpp::NumericVector CPL_area(Rcpp::List sfc) { 
@@ -22,13 +11,34 @@ Rcpp::NumericVector CPL_area(Rcpp::List sfc) {
 	Rcpp::NumericVector out(sfc.length());
 	for (size_t i = 0; i < g.size(); i++) {
 		if (g[i]->getDimension() == 2) {
-			OGRSurface *a = (OGRSurface *) g[i];
-			out[i] = a->get_Area();
+			OGRwkbGeometryType gt = OGR_GT_Flatten(g[i]->getGeometryType());
+			if (gt == wkbMultiSurface || gt == wkbMultiPolygon) {
+				OGRGeometryCollection *gc = (OGRGeometryCollection *) g[i];
+				out[i] = gc->get_Area();
+			} else {
+				OGRSurface *surf = (OGRSurface *) g[i];
+				out[i] = surf->get_Area();
+			} 
 		} else
 			out[i] = 0.0;
-		delete g[i];
+		OGRGeometryFactory::destroyGeometry(g[i]);
 	}
-	return(out);
+	return out;
+}
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector CPL_gdal_dimension(Rcpp::List sfc, bool NA_if_empty = true) {
+	std::vector<OGRGeometry *> g = ogr_from_sfc(sfc, NULL);
+	Rcpp::IntegerVector out(sfc.length());
+	for (size_t i = 0; i < g.size(); i++) {
+		if (NA_if_empty && g[i]->IsEmpty())
+			out[i] = NA_INTEGER;
+		else
+			out[i] = g[i]->getDimension();
+		OGRGeometryFactory f;
+		f.destroyGeometry(g[i]);
+	}
+	return out;
 }
 
 // [[Rcpp::export]]
@@ -37,112 +47,66 @@ Rcpp::NumericVector CPL_length(Rcpp::List sfc) {
 	Rcpp::NumericVector out(sfc.length());
 	for (size_t i = 0; i < g.size(); i++) {
 		OGRwkbGeometryType gt = OGR_GT_Flatten(g[i]->getGeometryType());
-		if (gt == wkbLineString || gt == wkbCircularString || gt == wkbCompoundCurve || gt == wkbCurve) {
-			OGRCurve *a = (OGRCurve *) g[i];
-			out[i] = a->get_Length();
-		} else {
-			OGRGeometryCollection *a = (OGRGeometryCollection *) g[i];
-			out[i] = a->get_Length();
+		switch (gt) {
+			case wkbPoint: 
+			case wkbMultiPoint:
+			case wkbPolygon:
+			case wkbMultiPolygon:
+				out[i] = 0.0;
+				break;
+			case wkbLineString:
+			case wkbCircularString:
+			case wkbCompoundCurve:
+			case wkbCurve: {
+					OGRCurve *a = (OGRCurve *) g[i];
+					out[i] = a->get_Length();
+				}
+				break;
+			default: {
+					OGRGeometryCollection *a = (OGRGeometryCollection *) g[i];
+					out[i] = a->get_Length();
+				}
 		}
-		delete g[i];
+		OGRGeometryFactory f;
+		f.destroyGeometry(g[i]);
 	}
-	return(out);
+	return out;
 }
 
 // [[Rcpp::export]]
-Rcpp::List CPL_geom_op(std::string op, Rcpp::List sfc, 
-		double bufferDist = 0.0, int nQuadSegs = 30,
-		double dTolerance = 0.0, bool preserveTopology = false, 
-		int bOnlyEdges = 1, double dfMaxLength = 0.0) {
+Rcpp::List CPL_gdal_segmentize(Rcpp::List sfc, double dfMaxLength = 0.0) {
 
-	if (op == "segmentize" && dfMaxLength <= 0.0)
-		throw std::invalid_argument("argument dfMaxLength should be positive\n");
+	if (dfMaxLength <= 0.0)
+		Rcpp::stop("argument dfMaxLength should be positive\n");
 
 	std::vector<OGRGeometry *> g = ogr_from_sfc(sfc, NULL);
-	std::vector<OGRGeometry *> out(g.size());
-
-	if (op == "buffer") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Buffer(bufferDist, nQuadSegs);
-	} else if (op == "boundary") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Boundary();
-	} else if (op == "convex_hull") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->ConvexHull();
-	} else if (op == "union_cascaded") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->UnionCascaded();
-	} else if (op == "simplify") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = preserveTopology ?  g[i]->SimplifyPreserveTopology(dTolerance) : 
-					g[i]->Simplify(dTolerance);
-	} else if (op == "polygonize") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Polygonize();
-	} else if (op == "segmentize") {
-		for (size_t i = 0; i < g.size(); i++) {
-			g[i]->segmentize(dfMaxLength);
-			out[i] = g[i];
-		}
-	} else if (op == "centroid") {
-		for (size_t i = 0; i < g.size(); i++) {
-			OGRPoint *gm = new OGRPoint;
-			g[i]->Centroid(gm);
-			out[i] = gm;
-		}
-	} else
-#if GDAL_VERSION_MAJOR >= 2 && GDAL_VERSION_MINOR >= 1
-	if (op == "triangulate") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->DelaunayTriangulation(dTolerance, bOnlyEdges);
-	} else
-#endif
-		throw std::invalid_argument("invalid operation"); // would leak g and out
-
-	if (op != "segmentize")
-		for (size_t i = 0; i < g.size(); i++)
-			delete g[i];
-	Rcpp::List ret = sfc_from_ogr(out, true);
-	ret.attr("epsg") = sfc.attr("epsg");
-	ret.attr("proj4string") = sfc.attr("proj4string");
-	return(ret);
-}
-
-// [[Rcpp::export]]
-Rcpp::List CPL_geom_op2(std::string op, Rcpp::List sfc, Rcpp::List sf0) {
-
-	std::vector<OGRGeometry *> g = ogr_from_sfc(sfc, NULL);
-	std::vector<OGRGeometry *> g0 = ogr_from_sfc(sf0, NULL);
-	std::vector<OGRGeometry *> out(g.size());
-
-	if (op == "intersection") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Intersection(g0[0]);
-	} else if (op == "union") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Union(g0[0]);
-	} else if (op == "difference") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->Difference(g0[0]);
-	} else if (op == "sym_difference") {
-		for (size_t i = 0; i < g.size(); i++)
-			out[i] = g[i]->SymDifference(g0[0]);
-	} else 
-		throw std::invalid_argument("invalid operation"); // would leak g, g0 and out
-	// clean up:
 	for (size_t i = 0; i < g.size(); i++)
-		delete g[i];
-	for (size_t i = 0; i < g0.size(); i++)
-		delete g0[i];
+		g[i]->segmentize(dfMaxLength);
+	Rcpp::List ret = sfc_from_ogr(g, true);
+	ret.attr("crs") = sfc.attr("crs");
+	return ret;
+}
 
-	OGRGeometryFactory f;
-	for (size_t i = 0; i < out.size(); i++)
-		if (out[i] == NULL)
-			out[i] = f.createGeometry(wkbGeometryCollection);
-	Rcpp::List ret = sfc_from_ogr(out, true);
-	ret.attr("epsg") = sfc.attr("epsg");
-	ret.attr("proj4string") = sfc.attr("proj4string");
-
-	return(ret);
+// [[Rcpp::export]]
+Rcpp::List CPL_gdal_linestring_sample(Rcpp::List sfc, Rcpp::List distLst) {
+	if (sfc.size() != distLst.size())
+		Rcpp::stop("sfc and dist should have equal length"); // #nocov
+	std::vector<OGRGeometry *> g = ogr_from_sfc(sfc, NULL);
+	std::vector<OGRGeometry *> out(g.size());
+	for (size_t i = 0; i < g.size(); i++) {
+		if (wkbFlatten(g[i]->getGeometryType()) != wkbLineString)
+			Rcpp::stop("CPL_gdal_linestring_sample only available for LINESTRING"); // #nocov
+		OGRGeometryCollection *gc = new OGRGeometryCollection;
+		Rcpp::NumericVector dists = distLst[i];
+		for (int j = 0; j < dists.size(); j++) {
+			OGRPoint *poPoint  = new OGRPoint;
+			((OGRLineString *) g[i])->Value(dists[j], poPoint);
+			gc->addGeometryDirectly(poPoint);
+		}
+		out[i] = OGRGeometryFactory::forceToMultiPoint(gc);
+	}
+	Rcpp::List ret = sfc_from_ogr(g, true); // releases g
+	ret = sfc_from_ogr(out, true); // releases out
+	ret.attr("crs") = sfc.attr("crs");
+	return ret;
 }

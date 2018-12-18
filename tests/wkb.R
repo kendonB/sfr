@@ -1,4 +1,4 @@
-library(sf)
+suppressPackageStartupMessages(library(sf))
 round_trip = function(x, EWKB = FALSE, pureR = FALSE) {
 	if (inherits(x, "sfg"))
 		x = st_sfc(x)
@@ -42,3 +42,21 @@ sapply(list(p3, p3m, p4, p2, ls, mp, pl1, mp1, ml1, gc), round_trip, EWKB = FALS
 sapply(list(p3, p3m, p4, p2, ls, mp, pl1, mp1, ml1, gc), round_trip, EWKB = FALSE, pureR = TRUE)
 sapply(list(p3, p3m, p4, p2, ls, mp, pl1, mp1, ml1, gc), round_trip, EWKB = TRUE)
 sapply(list(p3, p3m, p4, p2, ls, mp, pl1, mp1, ml1, gc), round_trip, EWKB = TRUE, pureR = TRUE)
+
+rawToHex(st_as_binary(st_multipoint(matrix(1:6,3))))
+rawToHex(st_as_binary(st_sfc(st_point(c(0,1)), st_multipoint(matrix(1:6,3)))))
+try(rawToHex("error"))
+
+# debug roundtrips sf -> GDAL -> sf; 
+# the first WKT is what GDAL reports, and will lack M
+st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_linestring(matrix(1:18,6,3),dim="XYZ")))))
+st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_multipoint(matrix(1:18,6,3),dim="XYZ")))))
+st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_point(c(0,0,0), dim="XYZ")))))
+
+if (sf:::CPL_gdal_version() >= "2.1.0") { # address GDAL/Fedora (gdal 2.0.2) error:
+  st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_linestring(matrix(1:18,6,3),dim="XYM")))))
+  st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_multipoint(matrix(1:18,6,3),dim="XYM")))))
+  st_as_text(st_sfc(sf:::CPL_roundtrip(st_sfc(st_point(c(0,0,0), dim="XYM")))))
+} else {
+	"(output expected when gdal <= 2.1.0, e.g. CRAN/fedora)"
+}

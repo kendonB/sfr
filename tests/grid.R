@@ -1,22 +1,22 @@
 # MULTIPOLYGONS
-library(sf)
+suppressPackageStartupMessages(library(sf))
 library(grid)
-nc = st_read(system.file("shape/nc.shp", package="sf"), "nc", crs = 4267)
+nc = st_read(system.file("shape/nc.shp", package="sf"), quiet = TRUE)
 grid.newpage()
 # pushViewport(viewport(width = 0.8, height = 0.8))
 pushViewport(st_viewport(nc))
 invisible(lapply(st_geometry(nc), function(x) grid.draw(st_as_grob(x, gp = gpar(fill = 'red')))))
 
 # POLYGONS
-# nc = st_read(system.file("gpkg/nc.gpkg", package="sf"), "nc.gpkg", crs = 4267, type = 3)
-nc = st_read(system.file("shape/nc.shp", package="sf"), "nc", crs = 4267, type = 3)
+# nc = st_read(system.file("gpkg/nc.gpkg", package="sf"), "nc.gpkg", type = 3)
+nc = st_read(system.file("shape/nc.shp", package="sf"), type = 3, quiet = TRUE)
 grid.newpage()
 pushViewport(st_viewport(nc))
 invisible(lapply(st_geometry(nc), function(x) grid.draw(st_as_grob(x, gp = gpar(fill = 'red')))))
 
 # POINTS:
 data(meuse, package = "sp")
-meuse_sf = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, relation_to_geometry = "field")
+meuse_sf = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
 grid.newpage()
 pushViewport(st_viewport(meuse_sf))
 invisible(lapply(st_geometry(meuse_sf), 
@@ -54,3 +54,6 @@ grid.newpage()
 pushViewport(st_viewport(meuse_ll))
 invisible(lapply(st_geometry(meuse_ll), 
 	function(x) grid.draw(st_as_grob(x, gp = gpar(fill = 'red')))))
+
+gc = st_geometrycollection(list(st_point(0:1), st_linestring(matrix(1:4,2))))
+grb = st_as_grob(gc)

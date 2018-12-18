@@ -2,40 +2,93 @@
 % Please edit documentation in R/transform.R
 \name{st_transform}
 \alias{st_transform}
-\alias{st_transform.sf}
 \alias{st_transform.sfc}
+\alias{st_transform.sf}
 \alias{st_transform.sfg}
+\alias{st_proj_info}
+\alias{st_wrap_dateline}
+\alias{st_wrap_dateline.sfc}
+\alias{st_wrap_dateline.sf}
+\alias{st_wrap_dateline.sfg}
 \title{Transform or convert coordinates of simple feature}
 \usage{
-st_transform(x, crs)
+st_transform(x, crs, ...)
 
-\method{st_transform}{sfc}(x, crs, ...)
+\method{st_transform}{sfc}(x, crs, ..., partial = TRUE, check = FALSE,
+  use_gdal = TRUE)
 
 \method{st_transform}{sf}(x, crs, ...)
 
 \method{st_transform}{sfg}(x, crs, ...)
+
+st_proj_info(type = "proj")
+
+st_wrap_dateline(x, options, quiet)
+
+\method{st_wrap_dateline}{sfc}(x, options = "WRAPDATELINE=YES",
+  quiet = TRUE)
+
+\method{st_wrap_dateline}{sf}(x, options = "WRAPDATELINE=YES",
+  quiet = TRUE)
+
+\method{st_wrap_dateline}{sfg}(x, options = "WRAPDATELINE=YES",
+  quiet = TRUE)
 }
 \arguments{
 \item{x}{object of class sf, sfc or sfg}
 
-\item{crs}{coordinate reference system: integer with the epsg code, or character with proj4string}
+\item{crs}{coordinate reference system: integer with the EPSG code, or character with proj4string}
 
 \item{...}{ignored}
+
+\item{partial}{logical; allow for partial projection, if not all points of a geometry can be projected (corresponds to setting environment variable \code{OGR_ENABLE_PARTIAL_REPROJECTION} to \code{TRUE})}
+
+\item{check}{logical; perform a sanity check on resulting polygons?}
+
+\item{use_gdal}{logical; this parameter is deprecated. For transformations using PROJ.4 directly rather than indirectly through GDAL, use \link[lwgeom]{st_transform_proj} of package \code{lwgeom} (see Details)}
+
+\item{type}{character; one of \code{have_datum_files}, \code{proj}, \code{ellps}, \code{datum} or \code{units}}
+
+\item{options}{character; should have "WRAPDATELINE=YES" to function; another parameter that is used is "DATELINEOFFSET=10" (where 10 is the default value)}
+
+\item{quiet}{logical; print options after they have been parsed?}
 }
 \description{
 Transform or convert coordinates of simple feature
 }
 \details{
-transforms coordinates of object to new projection
+Transforms coordinates of object to new projection. Features that cannot be transformed are returned as empty geometries.
 
-the st_transform method for sfg objects assumes that the crs of the object is available as an attribute of that name.
+\code{st_transform} uses GDAL for coordinate transformations; internally, GDAL converts the \code{proj4string} into a well-known-text representation, before passing that on to PROJ.4. In this process, some information can get lost. Adding parameter \code{+wktext} to the \code{proj4string} definition may resolve this; see \url{https://github.com/edzer/sp/issues/42}.
+
+Some PROJ.4 projections are not supported by GDAL, e.g. \code{"+proj=wintri"} because it does not have an inverse projection. Projecting to unsupported projections can be done by \link[lwgeom]{st_transform_proj}, part of package lwgeom. Note that the unsupported \code{proj4string} cannot be passed as argument to \link{st_crs}, but has to be given as character string.
+
+The \code{st_transform} method for \code{sfg} objects assumes that the CRS of the object is available as an attribute of that name.
+
+\code{st_proj_info} lists the available projections, ellipses, datums or units supported by the Proj.4 library when \code{type} is equal to proj, ellps, datum or units; when \code{type} equals \code{have_datum_files} a boolean is returned indicating whether datum files are installed and accessible (checking for \code{conus}).
+
+For a discussion of using \code{options}, see \url{https://github.com/r-spatial/sf/issues/280} and \url{https://github.com/r-spatial/sf/issues/541}
 }
 \examples{
 p1 = st_point(c(7,52))
 p2 = st_point(c(-30,20))
-sfc = st_sfc(p1, p2, crs = "+init=epsg:4326")
-st_transform(sfc, "+init=epsg:3857")
+sfc = st_sfc(p1, p2, crs = 4326)
+sfc
+st_transform(sfc, 3857)
 st_transform(st_sf(a=2:1, geom=sfc), "+init=epsg:3857")
+nc = st_read(system.file("shape/nc.shp", package="sf"))
+st_area(nc[1,]) # area from long/lat
+st_area(st_transform(nc[1,], 32119)) # NC state plane, m
+st_area(st_transform(nc[1,], 2264)) # NC state plane, US foot
+library(units)
+set_units(st_area(st_transform(nc[1,], 2264)), m^2)
 st_transform(structure(p1, proj4string = "+init=epsg:4326"), "+init=epsg:3857")
+st_proj_info("datum")
+st_wrap_dateline(st_sfc(st_linestring(rbind(c(-179,0),c(179,0))), crs = 4326))
+library(maps)
+wrld <- st_as_sf(maps::map("world", fill = TRUE, plot = FALSE))
+wrld_wrap <- st_wrap_dateline(wrld, options = c("WRAPDATELINE=YES", "DATELINEOFFSET=180"),
+   quiet = TRUE)
+wrld_moll <- st_transform(wrld_wrap, "+proj=moll")
+plot(st_geometry(wrld_moll), col = "transparent")
 }
-

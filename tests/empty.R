@@ -1,4 +1,4 @@
-library(sf)
+suppressPackageStartupMessages(library(sf))
 
 # create empty geometries:
 st_point(rep(NA_real_,2))
@@ -91,3 +91,15 @@ st_intersects(x, x, sparse = FALSE)
 # two empty geoms:
 x = st_sfc(st_multipoint(), st_linestring())
 st_intersects(x, x, sparse = FALSE)
+
+# write & read:
+x = st_sf(a = 2:1, geom = structure(st_sfc(st_linestring(), st_linestring(matrix(1:4,2)))))
+write_sf(x, "empty.gpkg")
+y = st_read("empty.gpkg", quiet = TRUE)
+all.equal(x, y)
+
+# https://github.com/edzer/sfr/issues/398 :
+pt = st_sfc(st_point(c(0,92)), crs = 4267)
+robin_crs <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+india_crs <- "+init=epsg:24383"  # India-centered Lambert conformal conic projection
+st_transform(st_transform(pt, robin_crs), india_crs)
